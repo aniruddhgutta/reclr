@@ -1,0 +1,212 @@
+#!/bin/sh
+# reclr - minimal palette loader and template expander
+
+die() {
+    printf 'error: %s\n' "$*" >&2
+    exit 1
+}
+
+# convert hex digit to decimal
+h2d() {
+    case $1 in
+        [0-9]) printf '%d' "$1" ;;
+        [aA]) printf 10 ;; [bB]) printf 11 ;; [cC]) printf 12 ;;
+        [dD]) printf 13 ;; [eE]) printf 14 ;; [fF]) printf 15 ;;
+    esac
+}
+
+# convert hex pair to decimal
+h2p() {
+    # ${1%?} removes last char, ${1#?} removes first char
+    printf '%d' "$(($(h2d ${1%?}) * 16 + $(h2d ${1#?})))"
+}
+
+# convert #rrggbb to r,g,b
+hex2rgb() {
+    h=${1#\#}
+    printf '%d,%d,%d' \
+        "$(h2p ${h%????})" \  # keeps first 2 chars
+        "$(h2p $(printf '%s' "$h" | cut -c3-4))" \  # gets middle 2
+        "$(h2p ${h#????})"  # keeps last 2
+}
+
+# find palette in search dirs
+find_pal() {
+    for d in $pdir; do
+        [ -d "$d" ] || continue
+        result=$(find "$d" -type f -name "$1.txt" 2>/dev/null | head -n1)
+        [ -n "$result" ] && { printf '%s' "$result"; return 0; }
+    done
+    return 1
+}
+
+# load palette into p_* vars
+load_pal() {
+    [ -f "$1" ] || die "palette not found: $1"
+
+    while IFS='=' read -r k v || [ -n "$k" ]; do
+        # trim leading and trailing spaces
+        k=${k#"${k%%[![:space:]]*}"}; k=${k%"${k##*[![:space:]]}"}
+        v=${v#"${v%%[![:space:]]*}"}; v=${v%"${v##*[![:space:]]}"}
+        [ -z "$k" ] && continue
+        eval "p_$k=\"$v\""
+    done < "$1"
+
+    for k in background foreground color0 color1 color2 color3 \
+             color4 color5 color6 color7 color8 color9 color10 \
+             color11 color12 color13 color14 color15; do
+        eval "[ -z \"\$p_$k\" ]" && die "missing key: $k"
+    done
+
+    printf 'reclr: set theme to %s\n' "${1##*/}"
+}
+
+# process placeholder (var or var.mod)
+proc_ph() {
+    eval "v=\$p_$1"
+    case $2 in
+        strip) printf '%s' "${v#\#}" ;;
+        rgb) hex2rgb "$v" ;;
+        *) printf '%s' "$v" ;;
+    esac
+}
+
+# expand single line
+expand_ln() {
+    l=$1 r=""
+    while [ -n "$l" ]; do
+        case $l in
+            *'{'*)
+                r="$r${l%%\{*}"  # gets text before {
+                l=${l#*\{}  # gets text after {
+                case $l in
+                    *'}'*)
+                        ph=${l%%\}*}  # gets placeholder text
+                        l=${l#*\}}  # get text after }
+                        case $ph in
+                            # ${ph%%.*} gets var before dot
+                            # ${ph#*.} gets modifier after dot
+                            *.*) r="$r$(proc_ph ${ph%%.*} ${ph#*.})" ;;
+                            *) r="$r$(proc_ph $ph '')" ;;
+                        esac
+                        ;;
+                    *) r="$r$l"; l="" ;;
+                esac
+                ;;
+            *) r="$r$l"; l="" ;;
+        esac
+    done
+    printf '%s\n' "$r"
+}
+
+# expand template file
+expand_tmpl() {
+    out=$2
+    mkdir -p "${out%/*}" 2>/dev/null || die "mkdir failed: ${out%/*}"
+    : > "$out" || die "cannot write: $out"
+    
+    while IFS= read -r l || [ -n "$l" ]; do
+        expand_ln "$l" >> "$out"
+    done < "$1"
+}
+
+# expand all templates from template dirs
+expand_all() {
+    for td in $tdir; do
+        [ -d "$td" ] || continue
+        find "$td" -type f -name "*.txt" 2>/dev/null | while read -r tm; do
+            rel=${tm#"$td"}
+            rel=${rel#/}
+            expand_tmpl "$tm" "$odir/$rel"
+        done
+    done
+}
+
+# generate terminal sequences
+gen_seqs() {
+    : > "$1" || die "cannot write: $1"
+    
+    i=0
+    while [ "$i" -le 15 ]; do
+        eval "c=\$p_color$i"
+        seq=$(printf '\033]4;%d;%s\033\\' "$i" "$c")
+        printf '%s' "$seq" >> "$1"
+        printf '%s' "$seq"
+        i=$((i + 1))
+    done
+    
+    for code in "10;$p_foreground" "11;$p_background" "12;$p_foreground" \
+                "13;$p_foreground" "17;$p_foreground" "19;$p_background" \
+                "4;232;$p_background" "4;256;$p_foreground" \
+                "4;257;$p_background" "708;$p_background"; do
+        seq=$(printf '\033]%s\033\\' "$code")
+        printf '%s' "$seq" >> "$1"
+        printf '%s' "$seq"
+    done
+}
+
+# list available palettes
+list_pal() {
+    for d in $pdir; do
+        [ -d "$d" ] || continue
+        find "$d" -type f -name "*.txt" 2>/dev/null | 
+            while read -r f; do printf '%s\n' "${f##*/}"; done
+    done | sed 's/\.txt$//' | sort -u
+}
+
+# preview palette
+show_pal() {
+    i=0
+    while [ "$i" -lt 16 ]; do
+        printf "\033[48;5;%sm   \033[0m" "$i"
+        [ $(( (i+1) % 8 )) -eq 0 ] && printf "\n"
+        i=$((i+1))
+    done
+}
+
+# help function
+usage() {
+    printf 'usage: reclr -i palette [-t dir] [-o dir] [-l] [-p] [-h]\n'
+}
+
+main() {
+    pdir="${XDG_CONFIG_HOME:-$HOME/.config}/reclr/palettes /etc/reclr/palettes ./palettes"
+    tdir="${XDG_CONFIG_HOME:-$HOME/.config}/reclr/templates /etc/reclr/templates ./templates"
+    odir="${XDG_CACHE_HOME:-$HOME/.cache}/reclr"
+    pal="" default_tdir="$tdir" do_list=0 do_show=0
+    
+    while getopts ":i:t:o:lph" opt; do
+        case $opt in
+            i) pal=$OPTARG ;;
+            t) tdir=$OPTARG ;;
+            o) odir=$OPTARG ;;
+            l) do_list=1 ;;
+            p) do_show=1 ;;
+            h) usage; exit 0 ;;
+            \?) usage; die "unknown flag: -$OPTARG" ;;
+            :) usage; die "missing argument for -$OPTARG" ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+    
+    [ "$do_list" -eq 1 ] && list_pal
+    [ "$do_show" -eq 1 ] && show_pal
+    
+    [ "$do_list" -eq 1 ] || [ "$do_show" -eq 1 ] && [ -z "$pal" ] && exit 0
+    [ -z "$pal" ] && { usage; die "no palette specified, use -i"; }
+    
+    case $pal in
+        /*) pf=$pal ;;
+        *) pf=$(find_pal "$pal") || die "palette not found: $pal" ;;
+    esac
+    
+    load_pal "$pf"
+    mkdir -p "$odir" 2>/dev/null || die "cannot create: $odir"
+    
+    gen_seqs "$odir/sequences"
+    expand_all
+    
+    [ "$tdir" != "$default_tdir" ] && printf 'templates: %s\n' "$tdir"
+    printf 'export: %s\n' "$odir"
+}
+main "$@"
