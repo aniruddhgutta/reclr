@@ -58,7 +58,7 @@ load_pal() {
         eval "[ -z \"\$p_$k\" ]" && die "missing key: $k"
     done
 
-    printf 'reclr: set theme to %s\n' "${1##*/}"
+    printf 'reclr: set palette to %s\n' "${1##*/}"
 }
 
 # process placeholder (var or var.mod)
@@ -164,7 +164,6 @@ show_pal() {
     done
 }
 
-# help function
 usage() {
     printf 'usage: reclr -i palette [-t dir] [-o dir] [-l] [-p] [-h]\n'
 }
@@ -174,7 +173,7 @@ main() {
     tdir="${XDG_CONFIG_HOME:-$HOME/.config}/reclr/templates /etc/reclr/templates ./templates"
     odir="${XDG_CACHE_HOME:-$HOME/.cache}/reclr"
     pal="" default_tdir="$tdir" do_list=0 do_show=0
-    
+
     while getopts ":i:t:o:lph" opt; do
         case $opt in
             i) pal=$OPTARG ;;
@@ -188,25 +187,26 @@ main() {
         esac
     done
     shift $((OPTIND - 1))
-    
+
     [ "$do_list" -eq 1 ] && list_pal
     [ "$do_show" -eq 1 ] && show_pal
-    
+
     [ "$do_list" -eq 1 ] || [ "$do_show" -eq 1 ] && [ -z "$pal" ] && exit 0
     [ -z "$pal" ] && { usage; die "no palette specified, use -i"; }
-    
+
     case $pal in
         /*) pf=$pal ;;
         *) pf=$(find_pal "$pal") || die "palette not found: $pal" ;;
     esac
-    
+
     load_pal "$pf"
     mkdir -p "$odir" 2>/dev/null || die "cannot create: $odir"
-    
+
     gen_seqs "$odir/sequences"
     expand_all
-    
+
     [ "$tdir" != "$default_tdir" ] && printf 'templates: %s\n' "$tdir"
     printf 'export: %s\n' "$odir"
 }
+
 main "$@"

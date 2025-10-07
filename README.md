@@ -1,38 +1,36 @@
 # reclr
 
-**reclr** (short for *recolor*) is a simple, POSIX-compliant shell script for **generating colorschemes**.
-It generates configs from pywal-compatible templates, previews palettes, and recolors your terminal — all with zero dependencies.
+**reclr** (short for *recolor*) is a simple POSIX shell script for **managing** color schemes.  
+It works with **pywal templates** and plain-text palettes, allowing you to reuse your existing templates to preview palettes and recolor your terminal, without requiring Python or extra dependencies.
 
 ---
 
 ## Features
 
-- Fast – loads themes instantly; pure shell, no Python
-- Compatible – works with pywal template syntax out of the box
-- Simple – load palettes and expand templates in one step
-- Portable – pure POSIX shell (~160 LOC), no external dependencies
+- **Fast** – applies palettes instantly  
+- **Format** – pywal templates and plain-text palettes  
+- **Hackable** – ~160 LOC of POSIX shell, easy to read and tweak
 
 ---
 
-## Why I Made This
+## Why not pywal?
 
-I like using **pywal** to manage color schemes, but I never cared much for its wallpaper features.
-It always felt slower than it needed to be, and I didn’t like relying on Python or extra dependencies just to load some colors.
-
-I prefer working in plain POSIX shell, so I made reclr — something faster, simpler, and easier to tinker with.
-It keeps pywal’s template format (because it’s great) but replaces the JSON colorschemes with a simpler plain-text format, since JSON seemed unnecessary.
+pywal is great for managing color schemes, but it's slow and bloated with features that not everyone needs, like wallpaper setting.  
+reclr follows the same concept but simplifies it by making it faster, easier to use, and fully implemented in POSIX shell.  
+It keeps pywal’s template format because it works well but uses a plain-text color scheme format instead of JSON, which is more complicated and unnecessary for most users.  
+Unlike pywal, reclr does not generate colors from wallpapers and only works with predefined palettes.
 
 ---
 
 ## Performance
 
-Testing done in bash, loading the same colorscheme (cached):
+Tested in bash five times and averaged. reclr loads the same colorscheme faster than pywal despite pywal caching colorschemes.
 ```sh
 time wal --theme petrichor
-real    0m0.219s
+real    0m0.134s
 
 time ./reclr -i petrichor  
-real    0m0.088s
+real    0m0.041s
 ```
 
 ---
@@ -45,14 +43,14 @@ cd reclr
 ./reclr -i palette
 ```
 
-Requirements: POSIX-compliant shell
+**Requirements**: POSIX-compliant shell
 
 ---
 
 ## Usage
 
 ```sh
-./reclr [command]
+reclr [command]
 ```
 
 ### Commands
@@ -68,20 +66,20 @@ Requirements: POSIX-compliant shell
 
 ```sh
 # Load a palette
-./reclr -i petrichor
+reclr -i petrichor
 
 # Load palette with custom template directory
-./reclr -i nord -t ~/dotfiles/templates
+reclr -i nord -t ~/dotfiles/templates
 
 # List all available palettes
-./reclr -l
+reclr -l
 
 # Preview current colors
-./reclr -p
+reclr -p
 
 # Commands can also be chained
 # Load a palette and preview it
-./reclr -i gruvbox -p
+reclr -i gruvbox -p
 ```
 
 ---
@@ -118,7 +116,7 @@ color15=#c7c9cc
 
 ## Templates
 
-Templates use *pywal-compatible placeholders* and can be dropped in directly from your existing pywal setup (refer to the [migration from pywal](#migration-from-pywal) section).
+Templates use pywal-compatible placeholders and can be dropped in directly from your existing pywal setup (refer to the [migrating from pywal](#migrating-from-pywal) section).
 Templates live in `~/.config/reclr/templates/`.
 
 Syntax: `{variable} or {variable.modifier}`
@@ -128,8 +126,8 @@ Syntax: `{variable} or {variable.modifier}`
 - `{color0}`–`{color15}`
 
 ### Modifiers
-- `.strip` – hex without # (e.g., 282828)
-- `.rgb` – comma-separated RGB (e.g., 40,40,40)
+- `.strip` – hex without # (e.g: 282828)
+- `.rgb` – comma-separated RGB (e.g: 40,40,40)
 
 Example `colors.conf.txt`:
 ```sh
@@ -153,14 +151,13 @@ Add this to your shell rc file (`.profile`, `.bashrc`, `.zshrc`, etc.) to automa
 
 ---
 
-## Migration from pywal
+## Migrating from pywal
 
-reclr is compatible with pywal template syntax, you can drop in your existing pywal templates with minimal changes.
+reclr is compatible with pywal's template syntax, you can drop in your existing pywal templates with minimal changes.
 
 ### Template migration
 - Copy your pywal templates into `~/.config/reclr/templates/`
-- Add `.txt` to their filenames (e.g., `colors.Xresources` → `colors.Xresources.txt`)
-- reclr supports `{colorX}`, `{background}`, `{foreground}` and `{variable.modifier}` syntax
+- Add `.txt` to their filenames (e.g.: `colors.Xresources` → `colors.Xresources.txt`)
 
 ### Unsupported modifiers
 
@@ -173,13 +170,13 @@ A patch adding support for these modifiers may be available in the future.
 
 ### Converting pywal color schemes
 
-reclr does not use pywal’s `.json` color scheme files directly, but you can easily convert them to reclr-compatible `.txt` palettes using this command:
+reclr does not use pywal’s JSON color scheme files directly, but you can easily convert them to plain-text palettes using this command:
 ```sh
 # Convert all .json colorschemes in the current directory to .txt palettes
 for f in *.json; do
     name=$(basename "$f" .json)
     grep -oE '"(background|foreground|color[0-9]+)":\s*"#[0-9a-fA-F]+"' "$f" |       
-    sed 's/"//g;s/:\s*/=/' > "$name.txt"
+        sed 's/"//g;s/:\s*/=/' > "$name.txt"
 done
 ```
 Each `.json` file will produce a plain-text `.txt` palette containing all standard color keys supported by reclr.
@@ -193,9 +190,8 @@ The `cursor` color is optional but can be added manually for template compatibil
 
 ## Credits
 
-Design inspired by [pywal](https://github.com/dylanaraps/pywal)
-Code style and philosophy inspired by [kiss](https://codeberg.org/kiss-community/kiss)
+Inspired by [pywal](https://github.com/dylanaraps/pywal) with code style from [kiss](https://codeberg.org/kiss-community/kiss).
 
 ## License
 
-[MIT](https://mit-license.org/)
+[MIT](./LICENSE)
