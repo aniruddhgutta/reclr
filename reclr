@@ -73,28 +73,18 @@ proc_ph() {
 
 # expand single line
 expand_ln() {
-    l=$1 r=""
-    while [ -n "$l" ]; do
-        case $l in
-            *'{'*)
-                r="$r${l%%\{*}"  # gets text before {
-                l=${l#*\{}  # gets text after {
-                case $l in
-                    *'}'*)
-                        ph=${l%%\}*}  # gets placeholder text
-                        l=${l#*\}}  # get text after }
-                        case $ph in
-                            # ${ph%%.*} gets var before dot
-                            # ${ph#*.} gets modifier after dot
-                            *.*) r="$r$(proc_ph ${ph%%.*} ${ph#*.})" ;;
-                            *) r="$r$(proc_ph $ph '')" ;;
-                        esac
-                        ;;
-                    *) r="$r$l"; l="" ;;
-                esac
-                ;;
-            *) r="$r$l"; l="" ;;
+    r=$1
+    while [ "${r#*\{*\}}" != "$r" ]; do  # check for complete {..} pair
+        pre=${r%%\{*}                     # text before {
+        mid=${r#*\{}; mid=${mid%%\}*}     # placeholder between {}
+        post=${r#*\}}                     # text after }
+        
+        case $mid in
+            *.*) val=$(proc_ph "${mid%%.*}" "${mid#*.}") ;;  # var.mod
+            *)   val=$(proc_ph "$mid" '') ;;                 # var only
         esac
+        
+        r="$pre$val$post"
     done
     printf '%s\n' "$r"
 }
