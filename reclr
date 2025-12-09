@@ -112,16 +112,14 @@ expand_all() {
     done
 }
 
-# generate terminal sequences
-gen_seqs() {
+# generate and apply terminal sequences
+apply_seqs() {
     : > "$1" || die "cannot write: $1"
     
     i=0
     while [ "$i" -le 15 ]; do
         eval "c=\$p_color$i"
-        seq=$(printf '\033]4;%d;%s\033\\' "$i" "$c")
-        printf '%s' "$seq" >> "$1"
-        printf '%s' "$seq"
+        printf '\033]4;%d;%s\033\\' "$i" "$c" >> "$1"
         i=$((i + 1))
     done
     
@@ -129,10 +127,13 @@ gen_seqs() {
                 "13;$p_foreground" "17;$p_foreground" "19;$p_background" \
                 "4;232;$p_background" "4;256;$p_foreground" \
                 "4;257;$p_background" "708;$p_background"; do
-        seq=$(printf '\033]%s\033\\' "$code")
-        printf '%s' "$seq" >> "$1"
-        printf '%s' "$seq"
+        printf '\033]%s\033\\' "$code" >> "$1"
     done
+    
+    for tty in /dev/pts/[0-9]*; do
+        [ -w "$tty" ] && cat "$1" > "$tty" 2>/dev/null &
+    done
+    wait
 }
 
 # list available palettes
@@ -192,7 +193,7 @@ main() {
     load_pal "$pf"
     mkdir -p "$odir" 2>/dev/null || die "cannot create: $odir"
 
-    gen_seqs "$odir/sequences"
+    apply_seqs "$odir/sequences"
     expand_all
 
     [ "$tdir" != "$default_tdir" ] && printf 'templates: %s\n' "$tdir"
