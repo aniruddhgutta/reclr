@@ -107,6 +107,8 @@ expand_all() {
         find "$td" -type f -name "*.txt" 2>/dev/null | while read -r tm; do
             rel=${tm#"$td"}
             rel=${rel#/}
+            out="$odir/$rel"
+            [ -f "$out" ] && continue
             expand_tmpl "$tm" "$odir/$rel"
         done
     done
@@ -191,6 +193,7 @@ main() {
     esac
 
     load_pal "$pf"
+    rm -rf "$odir"/*.txt 2>/dev/null
     mkdir -p "$odir" 2>/dev/null || die "cannot create: $odir"
 
     apply_seqs "$odir/sequences"
