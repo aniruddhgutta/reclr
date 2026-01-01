@@ -1,7 +1,7 @@
 # reclr
 
-**reclr** (short for *recolor*) is a simple POSIX shell script for **managing** color schemes.  
-It works with **pywal templates** and plain-text palettes, allowing you to reuse your existing templates to preview palettes and recolor your terminal, without requiring Python or extra dependencies.
+**reclr** (short for recolor) is a simple POSIX shell script for managing color schemes.  
+It works with pywal templates and plain-text palettes, allowing you to reuse your existing templates to preview palettes and recolor your terminal, without requiring Python or extra dependencies.
 
 ---
 
@@ -17,7 +17,7 @@ It works with **pywal templates** and plain-text palettes, allowing you to reuse
 
 pywal is great for managing color schemes, but it's slow and bloated with features that not everyone needs, like wallpaper setting.  
 reclr follows the same concept but simplifies it by making it faster, easier to use, and fully implemented in POSIX shell.  
-It keeps pywal’s template format because it works well but uses a plain-text color scheme format instead of JSON, which is more complicated and unnecessary for most users.  
+It keeps pywal’s template format because it works well, but uses a plain-text color scheme format instead of JSON, which is more complicated and unnecessary for most users.  
 Unlike pywal, reclr does not generate colors from wallpapers and only works with predefined palettes.
 
 ---
@@ -86,7 +86,7 @@ reclr -i gruvbox -p
 
 ## Palettes
 
-Palettes live in `~/.config/reclr/palettes/` as simple `key=value` text files with a `.txt` extension.
+Palettes live in `~/.config/reclr/palettes` as simple `key=value` text files with a `.txt` extension.
 Values are passed in `hex` format. All standard keys (`background`, `foreground`, `color0`-`color15`) must be defined.
 
 Example: `petrichor.txt`
@@ -117,7 +117,7 @@ color15=#c7c9cc
 ## Templates
 
 Templates use pywal-compatible placeholders and can be dropped in directly from your existing pywal setup (refer to the [migrating from pywal](#migrating-from-pywal) section).
-Templates live in `~/.config/reclr/templates/`.
+Templates live in `~/.config/reclr/templates`.
 
 Syntax: `{variable} or {variable.modifier}`
 
@@ -129,7 +129,7 @@ Syntax: `{variable} or {variable.modifier}`
 - `.strip` – hex without # (e.g: 282828)
 - `.rgb` – comma-separated RGB (e.g: 40,40,40)
 
-Example `colors.conf.txt`:
+Example `colors.conf`:
 ```sh
 background = {background}
 foreground = {foreground}
@@ -156,8 +156,7 @@ Add this to your shell rc file (`.profile`, `.bashrc`, `.zshrc`, etc.) to automa
 reclr is compatible with pywal's template syntax, you can drop in your existing pywal templates with minimal changes.
 
 ### Template migration
-- Copy your pywal templates into `~/.config/reclr/templates/`
-- Add `.txt` to their filenames (e.g.: `colors.Xresources` → `colors.Xresources.txt`)
+Copy your pywal templates into `~/.config/reclr/templates`
 
 ### Unsupported modifiers
 

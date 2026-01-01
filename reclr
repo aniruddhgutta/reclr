@@ -104,7 +104,8 @@ expand_tmpl() {
 expand_all() {
     for td in $tdir; do
         [ -d "$td" ] || continue
-        find "$td" -type f -name "*.txt" 2>/dev/null | while read -r tm; do
+        for tm in "$td"/*; do
+            [ -f "$tm" ] || continue
             rel=${tm#"$td"}
             rel=${rel#/}
             out="$odir/$rel"
