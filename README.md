@@ -2,6 +2,7 @@
 
 **reclr** (short for recolor) is a simple POSIX shell script for managing color schemes.  
 It works with pywal templates and plain-text palettes, allowing you to reuse your existing templates to preview palettes and recolor your terminal, without requiring Python or extra dependencies.
+![](../demos/assets/reclr.webp?raw=true)
 
 ---
 
