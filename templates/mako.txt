@@ -1,4 +1,4 @@
-background-color={color0}
-text-color=#FFFFFF
-border-color={color1}
-progress-color=over {color1}
+background-color={background}
+text-color={foreground}
+border-color={color8}
+progress-color=source {color2}

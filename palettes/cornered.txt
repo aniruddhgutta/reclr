@@ -15,3 +15,4 @@ color11=#ACA98A
 color12=#8F8AAC
 color13=#AC8AAC
 color14=#8AABAC
+color15=#F0F0F0
