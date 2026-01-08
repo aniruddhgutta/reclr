@@ -184,7 +184,16 @@ Each `.json` file will produce a plain-text `.txt` palette containing all standa
 ### Unsupported colorscheme definitions
 
 reclr ignores non-color fields in pywal’s `.json` files such as `checksum`, `wallpaper`, and `alpha`.  
-The `cursor` color is optional but can be added manually for template compatibility.
+
+### Optional colorscheme definitions
+The `cursor` and `accent` colors are optional but can be added manually and used.
+- `accent` defaults to `color2` if not defined
+- `cursor` defaults to `color15` if not defined
+
+The palettes provided in this repository do not include `accent` and `cursor`.
+
+Templates can reference any custom color key (e.g: `accent2`, `accent3`) as long as the palette defines them.
+Undefined keys expand to empty strings, which may break templates, so ensure your palettes include all keys your templates reference.
 
 ---
 
