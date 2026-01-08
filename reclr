@@ -58,6 +58,10 @@ load_pal() {
         eval "[ -z \"\$p_$k\" ]" && die "missing key: $k"
     done
 
+    # set fallbacks for optional colors
+    [ -z "$p_accent" ] && p_accent="$p_color2"
+    [ -z "$p_cursor" ] && p_cursor="$p_color15"
+
     printf 'reclr: set palette to %s\n' "${1##*/}"
 }
 
