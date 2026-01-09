@@ -198,7 +198,7 @@ main() {
     esac
 
     load_pal "$pf"
-    rm -rf "$odir"/*.txt 2>/dev/null
+    rm -rf "$odir"/* 2>/dev/null
     mkdir -p "$odir" 2>/dev/null || die "cannot create: $odir"
 
     apply_seqs "$odir/sequences"
