@@ -30,6 +30,128 @@ hex2rgb() {
         "$(h2p ${h#????})"  # keeps last 2
 }
 
+# rgb to hex
+rgb2hex() {
+    printf '#%02x%02x%02x' "$1" "$2" "$3"
+}
+
+# get perceived brightness (0-255)
+brightness() {
+    h=${1#\#}
+    r=$(h2p ${h%????})
+    g=$(h2p $(printf '%s' "$h" | cut -c3-4))
+    b=$(h2p ${h#????})
+    printf '%d' $(( (r*299 + g*587 + b*114) / 1000 ))
+}
+
+# darken/lighten color by percentage (in HCL-like space)
+adjust() {
+    h=${1#\#}
+    r=$(h2p ${h%????})
+    g=$(h2p $(printf '%s' "$h" | cut -c3-4))
+    b=$(h2p ${h#????})
+    
+    case $2 in
+        -*) # darken
+            p=${2#-}
+            r=$(( r * (100 - p) / 100 ))
+            g=$(( g * (100 - p) / 100 ))
+            b=$(( b * (100 - p) / 100 ))
+            ;;
+        *) # lighten
+            r=$(( r + (255 - r) * $2 / 100 ))
+            g=$(( g + (255 - g) * $2 / 100 ))
+            b=$(( b + (255 - b) * $2 / 100 ))
+            ;;
+    esac
+    
+    [ "$r" -gt 255 ] && r=255; [ "$r" -lt 0 ] && r=0
+    [ "$g" -gt 255 ] && g=255; [ "$g" -lt 0 ] && g=0
+    [ "$b" -gt 255 ] && b=255; [ "$b" -lt 0 ] && b=0
+    
+    rgb2hex "$r" "$g" "$b"
+}
+
+# extract colors from image using imagemagick (pywal method)
+extract_colors() {
+    command -v convert >/dev/null 2>&1 || die "imagemagick required for -g"
+    [ -f "$1" ] || die "image not found: $1"
+    
+    # pywal method: resize, quantize to 16+ colors, get unique colors
+    # try increasing palette size until we get >16 colors
+    i=0
+    while [ "$i" -lt 20 ]; do
+        n=$((16 + i))
+        cols=$(convert "$1" -resize 256x256 -colors "$n" -unique-colors txt:- 2>/dev/null | \
+            grep -o '#[0-9A-Fa-f]\{6\}')
+        
+        [ "$(printf '%s\n' "$cols" | wc -l)" -gt 16 ] && break
+        i=$((i + 1))
+    done
+    
+    [ -z "$cols" ] && die "failed to extract colors"
+    printf '%s\n' "$cols"
+}
+
+# generate palette from image (pywal algorithm)
+gen_pal() {
+    img=$1
+    out=$2
+    
+    printf 'generating palette from %s...\n' "$img"
+    
+    # extract colors
+    raw=$(extract_colors "$img")
+    [ -z "$raw" ] && die "no colors extracted"
+    
+    # pywal rearranges: [0] + [8:16] + [8:-1]
+    # this gives: bg, then 8 bright colors, then 8 darker variants
+    all=$(printf '%s\n' "$raw")
+    
+    # get background (darkest color)
+    bg=$(printf '%s\n' "$all" | head -n1)
+    bg_br=$(brightness "$bg")
+    
+    # determine if light/dark theme
+    if [ "$bg_br" -lt 128 ]; then
+        # dark theme: use lightest as fg
+        fg=$(printf '%s\n' "$all" | tail -n1)
+    else
+        # light theme: swap bg/fg
+        fg=$bg
+        bg=$(printf '%s\n' "$all" | tail -n1)
+    fi
+    
+    # take colors 2-17 (skip first bg)
+    colors=$(printf '%s\n' "$all" | tail -n +2 | head -n16)
+    
+    # split into color0-7 (darker) and color8-15 (brighter)
+    # pywal uses: colors[8:16] for 0-7, colors[8:-1] for 8-15
+    c0_7=$(printf '%s\n' "$colors" | tail -n8)
+    c8_15=$(printf '%s\n' "$colors" | head -n8)
+    
+    # write palette
+    mkdir -p "${out%/*}" 2>/dev/null
+    {
+        printf 'background=%s\n' "$bg"
+        printf 'foreground=%s\n' "$fg"
+        
+        i=0
+        printf '%s\n' "$c0_7" | while read -r c && [ "$i" -lt 8 ]; do
+            [ -n "$c" ] && printf 'color%d=%s\n' "$i" "$c"
+            i=$((i+1))
+        done
+        
+        i=8
+        printf '%s\n' "$c8_15" | while read -r c && [ "$i" -lt 16 ]; do
+            [ -n "$c" ] && printf 'color%d=%s\n' "$i" "$c"
+            i=$((i+1))
+        done
+    } > "$out"
+    
+    printf 'palette saved to %s\n' "$out"
+}
+
 # find palette in search dirs
 find_pal() {
     for d in $pdir; do
@@ -163,18 +285,33 @@ show_pal() {
 }
 
 usage() {
-    printf 'usage: reclr -i palette [-t dir] [-o dir] [-l] [-p] [-h]\n'
+    cat <<EOF
+usage: reclr -i palette [-t dir] [-o dir] [-l] [-p] [-h]
+       reclr -g image [-n name] [-o dir]
+
+flags:
+  -i  load palette by name or path
+  -g  generate palette from image
+  -n  name for generated palette (default: image basename)
+  -t  template directory
+  -o  output directory
+  -l  list available palettes
+  -p  preview current terminal colors
+  -h  show this help
+EOF
 }
 
 main() {
     pdir="${XDG_CONFIG_HOME:-$HOME/.config}/reclr/palettes /etc/reclr/palettes ./palettes"
     tdir="${XDG_CONFIG_HOME:-$HOME/.config}/reclr/templates /etc/reclr/templates ./templates"
     odir="${XDG_CACHE_HOME:-$HOME/.cache}/reclr"
-    pal="" default_tdir="$tdir" do_list=0 do_show=0
+    pal="" gen_img="" gen_name="" default_tdir="$tdir" do_list=0 do_show=0
 
-    while getopts ":i:t:o:lph" opt; do
+    while getopts ":i:g:n:t:o:lph" opt; do
         case $opt in
             i) pal=$OPTARG ;;
+            g) gen_img=$OPTARG ;;
+            n) gen_name=$OPTARG ;;
             t) tdir=$OPTARG ;;
             o) odir=$OPTARG ;;
             l) do_list=1 ;;
@@ -188,9 +325,19 @@ main() {
 
     [ "$do_list" -eq 1 ] && list_pal
     [ "$do_show" -eq 1 ] && show_pal
+    [ "$do_list" -eq 1 ] || [ "$do_show" -eq 1 ] && [ -z "$pal" ] && [ -z "$gen_img" ] && exit 0
 
-    [ "$do_list" -eq 1 ] || [ "$do_show" -eq 1 ] && [ -z "$pal" ] && exit 0
-    [ -z "$pal" ] && { usage; die "no palette specified, use -i"; }
+    # handle generation mode
+    if [ -n "$gen_img" ]; then
+        [ -z "$gen_name" ] && gen_name="${gen_img##*/}"
+        gen_name="${gen_name%.*}"
+        paldir="${XDG_CONFIG_HOME:-$HOME/.config}/reclr/palettes"
+        mkdir -p "$paldir" 2>/dev/null || die "cannot create: $paldir"
+        gen_pal "$gen_img" "$paldir/$gen_name.txt"
+        pal="$gen_name"
+    fi
+
+    [ -z "$pal" ] && { usage; die "no palette specified, use -i or -g"; }
 
     case $pal in
         /*) pf=$pal ;;
