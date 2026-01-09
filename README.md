@@ -6,6 +6,10 @@ It works with pywal templates and plain-text palettes, allowing you to reuse you
 
 ---
 
+## This branch adds support for dyanmic color generation like pywal, but isn't good at the moment and needs a lot of fixing. Feel free to contribute if you'd like though the code is cursed at the moment
+
+---
+
 ## Features
 
 - **Fast** – applies palettes instantly  
