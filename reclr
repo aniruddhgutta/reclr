@@ -1,5 +1,5 @@
 #!/bin/sh
-# reclr - minimal palette loader and template expander
+# reclr - palette generator
 
 die() {
     printf 'error: %s\n' "$*" >&2
@@ -28,6 +28,23 @@ hex2rgb() {
         "$(h2p ${h%????})" \  # keeps first 2 chars
         "$(h2p $(printf '%s' "$h" | cut -c3-4))" \  # gets middle 2
         "$(h2p ${h#????})"  # keeps last 2
+}
+
+# generate vt kernel color params
+gen_vt() {
+    r= g= b=
+    i=0
+    while [ "$i" -le 15 ]; do
+        eval "h=\$p_color$i"
+        h=${h#\#}
+        r="${r}$(h2p ${h%????}),"
+        g="${g}$(h2p $(printf '%s' "$h" | cut -c3-4)),"
+        b="${b}$(h2p ${h#????}),"
+        i=$((i+1))
+    done
+    printf 'vt.default_red=%s\n' "${r%,}"
+    printf 'vt.default_grn=%s\n' "${g%,}"
+    printf 'vt.default_blu=%s\n' "${b%,}"
 }
 
 # find palette in search dirs
@@ -163,25 +180,32 @@ show_pal() {
 }
 
 usage() {
-    printf 'usage: reclr -i palette [-t dir] [-o dir] [-l] [-p] [-h]\n'
+    cat >&2 << EOF
+usage: reclr -i <palette> [-t dir] [-o dir] [-lpkh]
+  -l    list palettes
+  -p    preview palette
+  -k    print vt kernel colors
+  -h    help
+EOF
 }
 
 main() {
     pdir="${XDG_CONFIG_HOME:-$HOME/.config}/reclr/palettes /etc/reclr/palettes ./palettes"
     tdir="${XDG_CONFIG_HOME:-$HOME/.config}/reclr/templates /etc/reclr/templates ./templates"
     odir="${XDG_CACHE_HOME:-$HOME/.cache}/reclr"
-    pal="" default_tdir="$tdir" do_list=0 do_show=0
+    pal="" default_tdir="$tdir" do_list=0 do_show=0 do_vt=0
 
-    while getopts ":i:t:o:lph" opt; do
+    while getopts ":i:t:o:lpkh" opt; do
         case $opt in
             i) pal=$OPTARG ;;
             t) tdir=$OPTARG ;;
             o) odir=$OPTARG ;;
             l) do_list=1 ;;
             p) do_show=1 ;;
-            h) usage; exit 0 ;;
+            k) do_vt=1 ;;
             \?) usage; die "unknown flag: -$OPTARG" ;;
             :) usage; die "missing argument for -$OPTARG" ;;
+            h | *) usage;;
         esac
     done
     shift $((OPTIND - 1))
@@ -198,6 +222,7 @@ main() {
     esac
 
     load_pal "$pf"
+    [ "$do_vt" -eq 1 ] && gen_vt
     rm -rf "$odir"/* 2>/dev/null
     mkdir -p "$odir" 2>/dev/null || die "cannot create: $odir"
 
