@@ -61,6 +61,7 @@ reclr [command]
 - `-o` – custom output directory (optional)
 - `-l` – list available palettes
 - `-p` – preview current color palette
+- `-k` – generate kernel params for vt-colors
 - `-h` – display help message
 
 ### Examples
@@ -77,6 +78,9 @@ reclr -l
 
 # Preview current colors
 reclr -p
+
+# Generate kernel parameters to set tty colors on startup
+printf '%s' "$(reclr -i mystbloom -k)" >> /boot/loader/entries/entry.conf  # systemd-boot
 
 # Commands can also be chained
 # Load a palette and preview it

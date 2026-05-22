@@ -204,7 +204,7 @@ main() {
             k) do_vt=1 ;;
             \?) usage; die "unknown flag: -$OPTARG" ;;
             :) usage; die "missing argument for -$OPTARG" ;;
-            h | *) usage;;
+            h | *) usage; exit 1;;
         esac
     done
     shift $((OPTIND - 1))
