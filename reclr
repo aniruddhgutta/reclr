@@ -42,9 +42,8 @@ gen_vt() {
         b="${b}$(h2p ${h#????}),"
         i=$((i+1))
     done
-    printf 'vt.default_red=%s\n' "${r%,}"
-    printf 'vt.default_grn=%s\n' "${g%,}"
-    printf 'vt.default_blu=%s\n' "${b%,}"
+    printf 'vt.default_red=%s vt.default_grn=%s vt.default_blu=%s' \
+        "${r%,}" "${g%,}" "${b%,}"
 }
 
 # find palette in search dirs
